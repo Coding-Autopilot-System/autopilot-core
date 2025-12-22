@@ -89,6 +89,15 @@ foreach ($issue in $issues) {
     if ($latestHuman) {
       $prompt += "Latest human guidance from $($latestHuman.user.login):"
       $prompt += $latestHuman.body
+      if (-not $dryRun) {
+        $guidanceNote = @(
+          "Autopilot note:",
+          "Using latest human guidance from $($latestHuman.user.login) posted at $($latestHuman.created_at).",
+          "Excerpt:",
+          ($latestHuman.body.Substring(0, [Math]::Min(600, $latestHuman.body.Length)))
+        ) -join [Environment]::NewLine
+        gh issue comment $issue.html_url -b $guidanceNote
+      }
     }
     $prompt += "Rules: minimal patch, no unrelated edits, no secrets, run best-effort tests."
     $prompt += "Return a concise plan and apply fixes."
