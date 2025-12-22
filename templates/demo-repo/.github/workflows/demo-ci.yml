@@ -1,0 +1,15 @@
+name: Demo CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Intentional failure
+        run: |
+          echo "Simulated failure for Autopilot demo."
+          exit 1

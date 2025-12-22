@@ -1,0 +1,111 @@
+name: Autopilot Issue Intake
+
+on:
+  workflow_run:
+    # Update this list in each repo to match the workflows you want monitored.
+    workflows: ["Demo CI"]
+    types: [completed]
+
+permissions:
+  actions: read
+  issues: write
+  contents: read
+
+jobs:
+  create-issue:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = run.id;
+            const signature = `${run.name}|${run.head_sha}`;
+            const marker = `Autopilot Signature: ${signature}`;
+
+            const jobs = await github.rest.actions.listJobsForWorkflowRun({
+              owner,
+              repo,
+              run_id: runId,
+              per_page: 100,
+            });
+
+            const failedSteps = [];
+            for (const job of jobs.data.jobs) {
+              if (job.conclusion !== 'success') {
+                for (const step of job.steps || []) {
+                  if (step.conclusion === 'failure') {
+                    failedSteps.push(`- ${job.name}: ${step.name}`);
+                  }
+                }
+              }
+            }
+
+            const stepSummary = failedSteps.length
+              ? failedSteps.join('\n')
+              : '- (no failed step details available)';
+
+            const title = `Autopilot intake: ${run.name} failed on ${run.head_branch}`;
+            const body = [
+              marker,
+              '',
+              `Workflow: ${run.name}`,
+              `Branch: ${run.head_branch}`,
+              `SHA: ${run.head_sha}`,
+              `Run: ${run.html_url}`,
+              '',
+              'Failed steps:',
+              stepSummary,
+              '',
+              'Labels: autofix, queued, safe-small, ci'
+            ].join('\n');
+
+            const desiredLabels = ['autofix', 'queued', 'safe-small', 'ci'];
+            const existingLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const existingNames = new Set(existingLabels.map((l) => l.name));
+            for (const label of desiredLabels) {
+              if (!existingNames.has(label)) {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: label,
+                  color: 'ededed',
+                });
+              }
+            }
+
+            const search = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${owner}/${repo} is:issue in:body "${marker}"`,
+            });
+
+            if (search.data.items.length > 0) {
+              const issue = search.data.items[0];
+              await github.rest.issues.update({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body,
+              });
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: issue.number,
+                labels: desiredLabels,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels: desiredLabels,
+              });
+            }

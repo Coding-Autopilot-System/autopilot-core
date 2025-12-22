@@ -40,3 +40,7 @@ See `docs/status.md` for the full status table.
 - Skips anything labeled `risky` or `needs-design`.
 - Minimal diffs, no secrets, no destructive ops.
 - Best-effort verification before PR creation.
+
+## Demos
+- `docs/demos/demo-repo.md`
+- `templates/demo-repo/`
