@@ -130,7 +130,7 @@ foreach ($issue in $issues) {
       if ($comments) {
         $latestHuman = $comments | Where-Object { $_.user.type -eq "User" -and $_.user.login -ne "github-actions[bot]" } | Select-Object -First 1
         $commentHistory = $comments | Sort-Object created_at | ForEach-Object {
-          "[${$_.user.login}] ${$_.body}"
+          "[$($_.user.login)] $($_.body)"
         }
       }
     } catch {
