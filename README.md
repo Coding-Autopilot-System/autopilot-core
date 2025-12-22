@@ -29,6 +29,9 @@ Organization-level control plane and operator for CI Autopilot.
 3) Ensure a self-hosted runner is online for this repo.
 4) Run `autopilot-operator.yml` manually to validate.
 
+## Org installer
+`autopilot-org-installer.yml` scans the org hourly and opens PRs for repos that opt in via `.autopilot/opt-in`.
+
 ## Current Autopilot Status
 <!-- AUTOPILOT-STATUS:START -->
 Last updated: 1970-01-01T00:00:00Z

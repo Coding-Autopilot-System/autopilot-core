@@ -1,0 +1,116 @@
+name: Autopilot Org Installer
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  installer:
+    runs-on: ubuntu-latest
+    env:
+      ORG: ${{ vars.ORG }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout installer
+        uses: actions/checkout@v4
+
+      - name: Sync intake workflow
+        run: |
+          set -euo pipefail
+          if [ -z "${ORG}" ]; then
+            echo "ORG var is required."
+            exit 1
+          fi
+
+          template_path=".github/workflows/autopilot-create-issue.yml"
+          if [ ! -f "${template_path}" ]; then
+            echo "Missing template at ${template_path}"
+            exit 1
+          fi
+
+          repos=$(gh api orgs/${ORG}/repos --paginate --jq '.[].name')
+
+          for repo in $repos; do
+            if [ "${repo}" = ".github" ]; then
+              continue
+            fi
+
+            echo "Checking ${ORG}/${repo}"
+
+            has_intake="false"
+            if gh api repos/${ORG}/${repo}/contents/.github/workflows/autopilot-create-issue.yml >/dev/null 2>&1; then
+              has_intake="true"
+            fi
+
+            if [ "${has_intake}" = "true" ]; then
+              continue
+            fi
+
+            opt_in="false"
+            if gh api repos/${ORG}/${repo}/contents/.autopilot/opt-in >/dev/null 2>&1; then
+              opt_in="true"
+            fi
+
+            if [ "${opt_in}" != "true" ]; then
+              marker="Autopilot Installer"
+              existing=$(gh issue list -R ${ORG}/${repo} -s open -S "\"${marker}\"" --json number --jq '.[0].number')
+              body=$(cat <<EOF
+              ${marker}
+
+              This repo does not have the Autopilot intake workflow installed.
+              To opt in, add a file at:
+
+              .autopilot/opt-in
+
+              Optional: specify monitored workflows in:
+              .autopilot/workflows.txt
+
+              Once opt-in is present, Autopilot will open a PR to install the workflow.
+              EOF
+              )
+              if [ -n "${existing}" ]; then
+                gh issue comment -R ${ORG}/${repo} "${existing}" -b "${body}"
+              else
+                gh issue create -R ${ORG}/${repo} -t "Autopilot intake not installed" -b "${body}" -l "autofix,queued,docs"
+              fi
+              continue
+            fi
+
+            tmp=$(mktemp -d)
+            gh repo clone ${ORG}/${repo} "${tmp}/${repo}" >/dev/null
+            cd "${tmp}/${repo}"
+
+            workflows_list=""
+            pr_note=""
+            if [ -f ".autopilot/workflows.txt" ]; then
+              mapfile -t wf < .autopilot/workflows.txt
+              if [ "${#wf[@]}" -gt 0 ]; then
+                joined=$(printf '", "' "${wf[@]}")
+                workflows_list="\"${joined}\""
+              fi
+            else
+              pr_note="Note: .autopilot/workflows.txt not found. Update the workflows list in the intake workflow if needed."
+            fi
+
+            mkdir -p .github/workflows
+            cp "${GITHUB_WORKSPACE}/${template_path}" .github/workflows/autopilot-create-issue.yml
+
+            if [ -n "${workflows_list}" ]; then
+              sed -i "s/workflows: \\[\"CI Autopilot Fixer\", \"Runner Smoke Test\"\\]/workflows: [${workflows_list}]/" .github/workflows/autopilot-create-issue.yml || true
+            fi
+
+            git checkout -b "autopilot/install-intake"
+            git add .github/workflows/autopilot-create-issue.yml
+            git commit -m "Add autopilot intake workflow"
+            git push -u origin "autopilot/install-intake"
+
+            gh pr create -t "Install Autopilot intake" -b "Opt-in detected. This PR installs the Autopilot intake workflow.\n\n${pr_note}" --base main --head "autopilot/install-intake" -R ${ORG}/${repo} || true
+
+            cd "${GITHUB_WORKSPACE}"
+            rm -rf "${tmp}"

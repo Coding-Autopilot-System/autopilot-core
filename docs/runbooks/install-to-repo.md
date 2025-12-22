@@ -1,5 +1,11 @@
 # Install to Repo
 
+## Opt-in automation (recommended)
+Add a file at `.autopilot/opt-in`. Autopilot will open a PR to install the intake workflow.
+
+Optional: define the workflows to monitor in `.autopilot/workflows.txt` (one workflow name per line).
+
+## Manual install
 Copy `.github/workflows/autopilot-create-issue.yml` into the target repo and update the `workflows:` list to match the CI workflows you want to monitor.
 
 ## Required labels
