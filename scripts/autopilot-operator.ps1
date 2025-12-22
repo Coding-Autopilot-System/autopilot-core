@@ -71,11 +71,25 @@ foreach ($issue in $issues) {
     $branch = "autofix/issue-$($issue.number)"
     git checkout -b $branch
 
+    $latestHuman = $null
+    try {
+      $comments = Invoke-GhJson -Args @("api", "repos/$repo/issues/$($issue.number)/comments", "-f", "per_page=100", "-f", "sort=created", "-f", "direction=desc")
+      if ($comments) {
+        $latestHuman = $comments | Where-Object { $_.user.type -eq "User" -and $_.user.login -ne "github-actions[bot]" } | Select-Object -First 1
+      }
+    } catch {
+      Write-Log "Failed to load comments for $repo#$($issue.number): $_" "WARN"
+    }
+
     $prompt = @()
     $prompt += "Repo: $repo"
     $prompt += "Issue: $($issue.title)"
     $prompt += "Issue URL: $($issue.html_url)"
     if ($runUrl) { $prompt += "Run URL: $runUrl" }
+    if ($latestHuman) {
+      $prompt += "Latest human guidance from $($latestHuman.user.login):"
+      $prompt += $latestHuman.body
+    }
     $prompt += "Rules: minimal patch, no unrelated edits, no secrets, run best-effort tests."
     $prompt += "Return a concise plan and apply fixes."
     $promptText = $prompt -join [Environment]::NewLine
