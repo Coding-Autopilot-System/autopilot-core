@@ -24,7 +24,7 @@ Write-Log "Max issues: $maxIssues Dry run: $dryRun"
 
 function Search-Issues {
   param([string]$SearchQuery, [int]$First)
-  $gql = @"
+  $gql = @'
 query($q:String!, $first:Int!) {
   search(query:$q, type:ISSUE, first:$first) {
     nodes {
@@ -39,7 +39,7 @@ query($q:String!, $first:Int!) {
     }
   }
 }
-"@
+'@
   $resp = gh api graphql -f query="$gql" -f q="$SearchQuery" -f first=$First
   $data = $resp | ConvertFrom-Json
   return $data.data.search.nodes
