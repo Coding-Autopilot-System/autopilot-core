@@ -22,18 +22,35 @@ Test-Tool -Name "codex"
 Write-Log "Autopilot operator starting for org: $org"
 Write-Log "Max issues: $maxIssues Dry run: $dryRun"
 
-$query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design"
-$result = Invoke-GhJson -Args @("api", "search/issues", "-f", "q=$query", "-f", "per_page=$maxIssues")
-$issues = @()
-if ($result -and $result.items) { $issues += $result.items }
-
-$manualQuery = "org:$org is:issue is:open no:label"
-$manualResult = Invoke-GhJson -Args @("api", "search/issues", "-f", "q=$manualQuery", "-f", "per_page=$maxIssues")
-if ($manualResult -and $manualResult.items) {
-  foreach ($item in $manualResult.items) {
-    $issues += $item
+function Search-Issues {
+  param([string]$SearchQuery, [int]$First)
+  $gql = @"
+query($q:String!, $first:Int!) {
+  search(query:$q, type:ISSUE, first:$first) {
+    nodes {
+      ... on Issue {
+        number
+        title
+        url
+        body
+        labels(first:20) { nodes { name } }
+        repository { nameWithOwner }
+      }
+    }
   }
 }
+"@
+  $resp = gh api graphql -f query="$gql" -f q="$SearchQuery" -f first=$First
+  $data = $resp | ConvertFrom-Json
+  return $data.data.search.nodes
+}
+
+$issues = @()
+$query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design"
+$issues += Search-Issues -SearchQuery $query -First $maxIssues
+
+$manualQuery = "org:$org is:issue is:open no:label"
+$issues += Search-Issues -SearchQuery $manualQuery -First $maxIssues
 
 if (-not $issues -or $issues.Count -eq 0) {
   Write-Log "No issues found."
@@ -41,7 +58,7 @@ if (-not $issues -or $issues.Count -eq 0) {
 }
 
 foreach ($issue in $issues) {
-  $repo = Get-RepoName -RepoUrl $issue.repository_url
+  $repo = $issue.repository.nameWithOwner
   if ($allowlist.Count -gt 0 -and ($allowlist -notcontains $repo)) {
     Write-Log "Skipping $repo#$($issue.number) (not in allowlist)"
     continue
@@ -52,7 +69,7 @@ foreach ($issue in $issues) {
   $attemptLabels = @("try-1", "try-2", "try-3")
   $existingLabels = @()
   if ($issue.labels) {
-    $existingLabels = $issue.labels | ForEach-Object { $_.name }
+    $existingLabels = $issue.labels.nodes | ForEach-Object { $_.name }
   }
   $attempt = 1
   if ($existingLabels -contains "try-2") { $attempt = 3 }
@@ -69,12 +86,12 @@ foreach ($issue in $issues) {
       elseif ($titleBody -match "test") { $intent = "tests"; $area = "tests" }
       elseif ($titleBody -match "security|vuln|cve") { $intent = "security"; $area = "security" }
       elseif ($titleBody -match "ci|build|workflow") { $intent = "autofix"; $area = "ci" }
-      gh issue edit $issue.html_url --add-label $intent --add-label queued --add-label $risk --add-label $area
+      gh issue edit $issue.url --add-label $intent --add-label queued --add-label $risk --add-label $area
       $existingLabels += @($intent, "queued", $risk, $area)
     }
-    gh issue edit $issue.html_url --remove-label queued --add-label in-progress
+    gh issue edit $issue.url --remove-label queued --add-label in-progress
     if ($existingLabels -notcontains $attemptLabel) {
-      gh issue edit $issue.html_url --add-label $attemptLabel
+      gh issue edit $issue.url --add-label $attemptLabel
     }
   }
 
@@ -125,7 +142,7 @@ foreach ($issue in $issues) {
     $prompt = @()
     $prompt += "Repo: $repo"
     $prompt += "Issue: $($issue.title)"
-    $prompt += "Issue URL: $($issue.html_url)"
+    $prompt += "Issue URL: $($issue.url)"
     if ($runUrl) { $prompt += "Run URL: $runUrl" }
     if ($latestHuman) {
       $prompt += "Latest human guidance from $($latestHuman.user.login):"
@@ -137,7 +154,7 @@ foreach ($issue in $issues) {
           "Excerpt:",
           ($latestHuman.body.Substring(0, [Math]::Min(600, $latestHuman.body.Length)))
         ) -join [Environment]::NewLine
-        gh issue comment $issue.html_url -b $guidanceNote
+        gh issue comment $issue.url -b $guidanceNote
       }
     }
     if ($commentHistory.Count -gt 0) {
@@ -166,15 +183,15 @@ foreach ($issue in $issues) {
     if (-not $changes) {
       Write-Log "No changes detected. Marking blocked."
       if (-not $dryRun) {
-        gh issue comment $issue.html_url -b "No changes produced by automation. Marking blocked."
-        gh issue edit $issue.html_url --remove-label in-progress --add-label blocked
-        gh issue edit $issue.html_url --add-label low
+        gh issue comment $issue.url -b "No changes produced by automation. Marking blocked."
+        gh issue edit $issue.url --remove-label in-progress --add-label blocked
+        gh issue edit $issue.url --add-label low
         $audit = @(
           "Autopilot attempt: $attemptLabel",
           "Result: no changes",
           "Commands: $([string]::Join(', ', $commandsRun))"
         ) -join [Environment]::NewLine
-        gh issue comment $issue.html_url -b $audit
+        gh issue comment $issue.url -b $audit
       }
       continue
     }
@@ -228,9 +245,9 @@ foreach ($issue in $issues) {
       if ($runUrl) { $prBody += "Run: $runUrl" + [Environment]::NewLine }
       $pr = gh pr create -t "Autofix #$($issue.number)" -b $prBody
 
-      gh issue comment $issue.html_url -b "Opened PR: $pr"
-      gh issue edit $issue.html_url --remove-label in-progress --add-label done
-      gh issue edit $issue.html_url --add-label $confidence
+      gh issue comment $issue.url -b "Opened PR: $pr"
+      gh issue edit $issue.url --remove-label in-progress --add-label done
+      gh issue edit $issue.url --add-label $confidence
 
       $audit = @(
         "Autopilot attempt: $attemptLabel",
@@ -244,16 +261,16 @@ foreach ($issue in $issues) {
       if ($tail) {
         $audit += [Environment]::NewLine + "Log tail:" + [Environment]::NewLine + ($tail -join [Environment]::NewLine)
       }
-      gh issue comment $issue.html_url -b $audit
+      gh issue comment $issue.url -b $audit
     }
 
     Write-Log "Completed $repo#$($issue.number) (verification=$verification)"
   } catch {
     Write-Log "Error: $_" "ERROR"
     if (-not $dryRun) {
-      gh issue comment $issue.html_url -b "Automation failed: $_"
-      gh issue edit $issue.html_url --remove-label in-progress --add-label blocked
-      gh issue edit $issue.html_url --add-label low
+      gh issue comment $issue.url -b "Automation failed: $_"
+      gh issue edit $issue.url --remove-label in-progress --add-label blocked
+      gh issue edit $issue.url --add-label low
       $audit = @(
         "Autopilot attempt: $attemptLabel",
         "Result: failure",
@@ -263,7 +280,7 @@ foreach ($issue in $issues) {
       if ($tail) {
         $audit += [Environment]::NewLine + "Log tail:" + [Environment]::NewLine + ($tail -join [Environment]::NewLine)
       }
-      gh issue comment $issue.html_url -b $audit
+      gh issue comment $issue.url -b $audit
     }
   } finally {
     Pop-Location
