@@ -39,8 +39,21 @@ foreach ($issue in $issues) {
 
   Write-Log "Processing $repo#$($issue.number)"
 
+  $attemptLabels = @("try-1", "try-2", "try-3")
+  $existingLabels = @()
+  if ($issue.labels) {
+    $existingLabels = $issue.labels | ForEach-Object { $_.name }
+  }
+  $attempt = 1
+  if ($existingLabels -contains "try-2") { $attempt = 3 }
+  elseif ($existingLabels -contains "try-1") { $attempt = 2 }
+  $attemptLabel = $attemptLabels[$attempt - 1]
+
   if (-not $dryRun) {
     gh issue edit $issue.html_url --remove-label queued --add-label in-progress
+    if ($existingLabels -notcontains $attemptLabel) {
+      gh issue edit $issue.html_url --add-label $attemptLabel
+    }
   }
 
   $runUrl = $null
@@ -81,6 +94,8 @@ foreach ($issue in $issues) {
       Write-Log "Failed to load comments for $repo#$($issue.number): $_" "WARN"
     }
 
+    $commandsRun = New-Object System.Collections.Generic.List[string]
+    $filesChanged = @()
     $prompt = @()
     $prompt += "Repo: $repo"
     $prompt += "Issue: $($issue.title)"
@@ -105,10 +120,12 @@ foreach ($issue in $issues) {
 
     if (-not $dryRun) {
       Write-Log "Running Codex"
+      $commandsRun.Add("codex <prompt>")
       try {
         Invoke-Checked -Command "codex" -Args @($promptText)
       } catch {
         Write-Log "Primary Codex invocation failed, retrying with 'run' subcommand." "WARN"
+        $commandsRun.Add("codex run <prompt>")
         Invoke-Checked -Command "codex" -Args @("run", $promptText)
       }
     } else {
@@ -121,30 +138,44 @@ foreach ($issue in $issues) {
       if (-not $dryRun) {
         gh issue comment $issue.html_url -b "No changes produced by automation. Marking blocked."
         gh issue edit $issue.html_url --remove-label in-progress --add-label blocked
+        $audit = @(
+          "Autopilot attempt: $attemptLabel",
+          "Result: no changes",
+          "Commands: $([string]::Join(', ', $commandsRun))"
+        ) -join [Environment]::NewLine
+        gh issue comment $issue.html_url -b $audit
       }
       continue
     }
+
+    $filesChanged = (git diff --name-only) -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 
     $verification = "skipped"
     if (Test-Path "package.json") {
       $verification = "npm"
       if (-not $dryRun) {
+        $commandsRun.Add("npm ci")
         Invoke-Checked -Command "npm" -Args @("ci")
+        $commandsRun.Add("npm test")
         Invoke-Checked -Command "npm" -Args @("test")
       }
     } elseif (Test-Path "pyproject.toml" -or Test-Path "requirements.txt") {
       $verification = "python"
       if (-not $dryRun) {
+        $commandsRun.Add("python -m venv .autopilot-venv")
         Invoke-Checked -Command "python" -Args @("-m", "venv", ".autopilot-venv")
         .\.autopilot-venv\Scripts\Activate.ps1
         if (Test-Path "requirements.txt") {
+          $commandsRun.Add("python -m pip install -r requirements.txt")
           Invoke-Checked -Command "python" -Args @("-m", "pip", "install", "-r", "requirements.txt")
         }
+        $commandsRun.Add("pytest -q")
         Invoke-Checked -Command "pytest" -Args @("-q")
       }
     } elseif ((Get-ChildItem -Filter "*.sln" -ErrorAction SilentlyContinue)) {
       $verification = "dotnet"
       if (-not $dryRun) {
+        $commandsRun.Add("dotnet test")
         Invoke-Checked -Command "dotnet" -Args @("test")
       }
     }
@@ -160,6 +191,15 @@ foreach ($issue in $issues) {
 
       gh issue comment $issue.html_url -b "Opened PR: $pr"
       gh issue edit $issue.html_url --remove-label in-progress --add-label done
+
+      $audit = @(
+        "Autopilot attempt: $attemptLabel",
+        "Result: success",
+        "Verification: $verification",
+        "Files changed: $([string]::Join(', ', $filesChanged))",
+        "Commands: $([string]::Join(', ', $commandsRun))"
+      ) -join [Environment]::NewLine
+      gh issue comment $issue.html_url -b $audit
     }
 
     Write-Log "Completed $repo#$($issue.number) (verification=$verification)"
@@ -168,6 +208,12 @@ foreach ($issue in $issues) {
     if (-not $dryRun) {
       gh issue comment $issue.html_url -b "Automation failed: $_"
       gh issue edit $issue.html_url --remove-label in-progress --add-label blocked
+      $audit = @(
+        "Autopilot attempt: $attemptLabel",
+        "Result: failure",
+        "Commands: $([string]::Join(', ', $commandsRun))"
+      ) -join [Environment]::NewLine
+      gh issue comment $issue.html_url -b $audit
     }
   } finally {
     Pop-Location
