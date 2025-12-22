@@ -18,6 +18,14 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - name: Ensure Codex on PATH
+        shell: pwsh
+        run: |
+          $codexPath = "C:\Users\admin\AppData\Roaming\npm"
+          if (Test-Path $codexPath) {
+            "PATH=$codexPath;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
+          }
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -28,7 +36,12 @@ jobs:
         run: |
           git --version
           gh --version
-          codex --version
+          if (Get-Command codex -ErrorAction SilentlyContinue) {
+            codex --version
+          } else {
+            Write-Host "Codex not found on PATH"
+            exit 1
+          }
 
       - name: Run operator
         shell: pwsh
