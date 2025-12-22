@@ -40,8 +40,10 @@ query($q:String!, $first:Int!) {
   }
 }
 '@
-  $resp = gh api graphql -f query="$gql" -f q="$SearchQuery" -f first=$First
+  $resp = gh api graphql -f query="$gql" -f q="$SearchQuery" -F first=$First
+  if (-not $resp) { return @() }
   $data = $resp | ConvertFrom-Json
+  if (-not $data -or -not $data.data -or -not $data.data.search) { return @() }
   return $data.data.search.nodes
 }
 
@@ -58,7 +60,15 @@ if (-not $issues -or $issues.Count -eq 0) {
 }
 
 foreach ($issue in $issues) {
+  if (-not $issue -or -not $issue.repository) {
+    Write-Log "Skipping issue with missing repository metadata." "WARN"
+    continue
+  }
   $repo = $issue.repository.nameWithOwner
+  if (-not $repo) {
+    Write-Log "Skipping issue with empty repository name." "WARN"
+    continue
+  }
   if ($allowlist.Count -gt 0 -and ($allowlist -notcontains $repo)) {
     Write-Log "Skipping $repo#$($issue.number) (not in allowlist)"
     continue
