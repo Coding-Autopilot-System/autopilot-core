@@ -18,7 +18,7 @@ function Initialize-Log {
 
 function Assert-Env {
   param([string]$Name)
-  if (-not $env:$Name) {
+  if (-not (Get-Item -Path ("Env:" + $Name) -ErrorAction SilentlyContinue)) {
     throw "Missing required env var: $Name"
   }
 }
