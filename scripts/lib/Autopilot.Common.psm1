@@ -35,9 +35,16 @@ function Invoke-Gh {
 
 function Invoke-GhJson {
   param([string[]]$Args)
-  $json = gh @Args
+  $json = gh @Args 2>$null
   if (-not $json) { return $null }
-  return $json | ConvertFrom-Json
+  $trimmed = $json.Trim()
+  $objIndex = $trimmed.IndexOf('{')
+  $arrIndex = $trimmed.IndexOf('[')
+  $start = @($objIndex, $arrIndex) | Where-Object { $_ -ge 0 } | Sort-Object | Select-Object -First 1
+  if ($start -gt 0) {
+    $trimmed = $trimmed.Substring($start)
+  }
+  return $trimmed | ConvertFrom-Json
 }
 
 function Get-RepoName {
