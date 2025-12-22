@@ -21,7 +21,7 @@ jobs:
       - name: Ensure Codex on PATH
         shell: pwsh
         run: |
-          $codexPath = "C:\Users\admin\AppData\Roaming\npm"
+          $codexPath = "C:\Program Files\codex"
           if (Test-Path $codexPath) {
             "PATH=$codexPath;$env:PATH" | Out-File -FilePath $env:GITHUB_ENV -Append
           }
