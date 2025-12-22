@@ -1,0 +1,35 @@
+name: Autopilot Operator
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  operator:
+    runs-on: [self-hosted, Windows]
+    env:
+      ORG: ${{ vars.ORG }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          clean: false
+
+      - name: Tool checks
+        shell: pwsh
+        run: |
+          git --version
+          gh --version
+          codex --version
+
+      - name: Run operator
+        shell: pwsh
+        run: .\scripts\autopilot-operator.ps1

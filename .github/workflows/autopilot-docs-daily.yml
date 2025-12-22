@@ -1,0 +1,78 @@
+name: Autopilot Docs Daily
+
+on:
+  schedule:
+    # 18:05 Europe/Helsinki (UTC+2/UTC+3). Cron is UTC.
+    - cron: "5 15 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    env:
+      ORG: ${{ vars.ORG }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update status docs
+        run: |
+          set -euo pipefail
+          if [ -z "${ORG}" ]; then
+            echo "ORG env var is required."
+            exit 1
+          fi
+          ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          repos=$(gh api orgs/${ORG}/repos --paginate --jq '.[].name')
+
+          table="| Repo | Autofix queued | In-progress | Blocked | Done |\n| ---- | -------------- | ----------- | ------- | ---- |"
+          for repo in $repos; do
+            q_base="repo:${ORG}/${repo} is:issue is:open label:autofix"
+            queued=$(gh api search/issues -f q="${q_base} label:queued" --jq .total_count)
+            inprogress=$(gh api search/issues -f q="${q_base} label:in-progress" --jq .total_count)
+            blocked=$(gh api search/issues -f q="${q_base} label:blocked" --jq .total_count)
+            done=$(gh api search/issues -f q="${q_base} label:done" --jq .total_count)
+            table="${table}\n| ${ORG}/${repo} | ${queued} | ${inprogress} | ${blocked} | ${done} |"
+          done
+
+          cat > docs/status.md <<EOF
+# Autopilot Status
+
+Last updated: ${ts}
+
+## Repository coverage
+
+${table}
+EOF
+
+          python - <<'PY'
+import re
+from pathlib import Path
+
+ts = """Last updated: ${ts}
+See `docs/status.md` for the full status table."""
+path = Path("README.md")
+text = path.read_text()
+block = "<!-- AUTOPILOT-STATUS:START -->\n" + ts + "\n<!-- AUTOPILOT-STATUS:END -->"
+text = re.sub(r"<!-- AUTOPILOT-STATUS:START -->(.|\n)*?<!-- AUTOPILOT-STATUS:END -->", block, text)
+path.write_text(text)
+PY
+
+      - name: Create PR
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          branch="docs/daily-status"
+          git checkout -B "${branch}"
+          git add docs/status.md README.md
+          git commit -m "Update autopilot status"
+          git push -f origin "${branch}"
+          gh pr create -t "Daily autopilot status update" -b "Automated docs update." --base main --head "${branch}" || true
