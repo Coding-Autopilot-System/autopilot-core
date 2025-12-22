@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Autopilot Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0e1116;
+      --panel: #141b22;
+      --panel-2: #10161c;
+      --ink: #e9eef4;
+      --muted: #9aa8b6;
+      --accent: #ff8a5b;
+      --accent-2: #41d3a5;
+      --line: rgba(255, 255, 255, 0.12);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Space Grotesk", "Segoe UI", sans-serif;
+      background: radial-gradient(1000px 500px at 10% -10%, rgba(65, 211, 165, 0.15), transparent),
+        radial-gradient(900px 600px at 90% 0%, rgba(255, 138, 91, 0.18), transparent),
+        var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    header {
+      padding: 48px 6vw 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .title {
+      font-size: clamp(30px, 4vw, 52px);
+      margin: 0;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      margin: 0;
+      max-width: 640px;
+      line-height: 1.6;
+    }
+
+    main {
+      padding: 0 6vw 64px;
+      display: grid;
+      gap: 22px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .metric {
+      font-size: 28px;
+      font-weight: 600;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      width: fit-content;
+    }
+
+    .panel {
+      background: var(--panel-2);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 20px;
+      display: grid;
+      gap: 12px;
+    }
+
+    a {
+      color: var(--accent-2);
+      text-decoration: none;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .link-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px 14px;
+      min-width: 200px;
+    }
+
+    .note {
+      font-family: "IBM Plex Mono", "Consolas", monospace;
+      font-size: 13px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="pill">Autopilot Ops</div>
+    <h1 class="title">Enterprise Autopilot Dashboard</h1>
+    <p class="subtitle">Unified status for intake, operator execution, and remediation health across the org.</p>
+  </header>
+
+  <main>
+    <section class="grid">
+      <div class="card">
+        <h3>Intake</h3>
+        <div class="metric">Active</div>
+        <div class="note">Workflow-run intake creates queued issues on failures.</div>
+      </div>
+      <div class="card">
+        <h3>Operator</h3>
+        <div class="metric">Scheduled</div>
+        <div class="note">Runs every 10 minutes on self-hosted runner.</div>
+      </div>
+      <div class="card">
+        <h3>Runner Health</h3>
+        <div class="metric">Monitored</div>
+        <div class="note">Offline alerts posted to ci-autopilot.</div>
+      </div>
+      <div class="card">
+        <h3>Docs Status</h3>
+        <div class="metric">Daily</div>
+        <div class="note">Status snapshot updated by docs workflow.</div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Live status</h3>
+      <p class="note">Open the daily status snapshot for queue counts and blockers.</p>
+      <div class="links">
+        <div class="link-card"><a href="status.md">Autopilot status</a></div>
+        <div class="link-card"><a href="runbooks/operator.md">Operator runbook</a></div>
+        <div class="link-card"><a href="demos/demo-repo.md">Demo walkthrough</a></div>
+        <div class="link-card"><a href="runbooks/labels.md">Label taxonomy</a></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h3>Operations</h3>
+      <p class="note">Monitor workflow runs in GitHub Actions for the latest execution history.</p>
+      <div class="links">
+        <div class="link-card"><a href="https://github.com/Coding-Autopilot-System/autopilot-core/actions">Autopilot actions</a></div>
+        <div class="link-card"><a href="https://github.com/Coding-Autopilot-System/ci-autopilot/actions">Runner actions</a></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

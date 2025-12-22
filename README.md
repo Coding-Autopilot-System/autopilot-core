@@ -32,6 +32,10 @@ Organization-level control plane and operator for CI Autopilot.
 ## Org installer
 `autopilot-org-installer.yml` scans the org hourly and opens PRs for repos that opt in via `.autopilot/opt-in`.
 
+## Dashboard
+- Live dashboard: https://coding-autopilot-system.github.io/autopilot-core/
+- Status snapshot: `docs/status.md`
+
 ## Current Autopilot Status
 <!-- AUTOPILOT-STATUS:START -->
 Last updated: 1970-01-01T00:00:00Z
