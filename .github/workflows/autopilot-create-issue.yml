@@ -64,6 +64,24 @@ jobs:
               'Labels: autofix, queued, safe-small, ci'
             ].join('\n');
 
+            const desiredLabels = ['autofix', 'queued', 'safe-small', 'ci'];
+            const existingLabels = await github.paginate(github.rest.issues.listLabelsForRepo, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const existingNames = new Set(existingLabels.map((l) => l.name));
+            for (const label of desiredLabels) {
+              if (!existingNames.has(label)) {
+                await github.rest.issues.createLabel({
+                  owner,
+                  repo,
+                  name: label,
+                  color: 'ededed',
+                });
+              }
+            }
+
             const search = await github.rest.search.issuesAndPullRequests({
               q: `repo:${owner}/${repo} is:issue in:body "${marker}"`,
             });
@@ -80,7 +98,7 @@ jobs:
                 owner,
                 repo,
                 issue_number: issue.number,
-                labels: ['autofix', 'queued', 'safe-small', 'ci'],
+                labels: desiredLabels,
               });
             } else {
               await github.rest.issues.create({
@@ -88,6 +106,6 @@ jobs:
                 repo,
                 title,
                 body,
-                labels: ['autofix', 'queued', 'safe-small', 'ci'],
+                labels: desiredLabels,
               });
             }
