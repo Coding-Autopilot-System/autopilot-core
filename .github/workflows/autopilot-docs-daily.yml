@@ -9,13 +9,14 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: read
 
 jobs:
   docs:
     runs-on: ubuntu-latest
     env:
-      ORG: ${{ vars.ORG }}
-      GH_TOKEN: ${{ github.token }}
+      ORG: ${{ vars.ORG || github.repository_owner }}
+      GH_TOKEN: ${{ secrets.ORG_READ_TOKEN || github.token }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
