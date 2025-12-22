@@ -63,4 +63,23 @@ function Invoke-Checked {
   }
 }
 
-Export-ModuleMember -Function Write-Log, Initialize-Log, Assert-Env, Invoke-Gh, Invoke-GhJson, Get-RepoName, Test-Tool, Invoke-Checked
+function Invoke-CheckedLogged {
+  param([string]$Command, [string[]]$Args = @(), [string]$LogPath)
+  Write-Log "Running: $Command $($Args -join ' ')"
+  if ($LogPath) {
+    & $Command @Args 2>&1 | Tee-Object -FilePath $LogPath -Append
+  } else {
+    & $Command @Args
+  }
+  if ($LASTEXITCODE -ne 0) {
+    throw "Command failed: $Command (exit $LASTEXITCODE)"
+  }
+}
+
+function Get-LogTail {
+  param([string]$LogPath, [int]$Lines = 40)
+  if (-not (Test-Path $LogPath)) { return $null }
+  return Get-Content $LogPath -Tail $Lines
+}
+
+Export-ModuleMember -Function Write-Log, Initialize-Log, Assert-Env, Invoke-Gh, Invoke-GhJson, Get-RepoName, Test-Tool, Invoke-Checked, Invoke-CheckedLogged, Get-LogTail

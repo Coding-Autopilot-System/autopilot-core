@@ -24,7 +24,17 @@ Write-Log "Max issues: $maxIssues Dry run: $dryRun"
 
 $query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design"
 $result = Invoke-GhJson -Args @("api", "search/issues", "-f", "q=$query", "-f", "per_page=$maxIssues")
-$issues = $result.items
+$issues = @()
+if ($result -and $result.items) { $issues += $result.items }
+
+$manualQuery = "org:$org is:issue is:open no:label"
+$manualResult = Invoke-GhJson -Args @("api", "search/issues", "-f", "q=$manualQuery", "-f", "per_page=$maxIssues")
+if ($manualResult -and $manualResult.items) {
+  foreach ($item in $manualResult.items) {
+    $issues += $item
+  }
+}
+
 if (-not $issues -or $issues.Count -eq 0) {
   Write-Log "No issues found."
   exit 0
@@ -50,6 +60,18 @@ foreach ($issue in $issues) {
   $attemptLabel = $attemptLabels[$attempt - 1]
 
   if (-not $dryRun) {
+    if ($existingLabels.Count -eq 0) {
+      $intent = "improve"
+      $area = "ci"
+      $risk = "safe-small"
+      $titleBody = ($issue.title + " " + $issue.body).ToLowerInvariant()
+      if ($titleBody -match "doc") { $intent = "docs"; $area = "docs" }
+      elseif ($titleBody -match "test") { $intent = "tests"; $area = "tests" }
+      elseif ($titleBody -match "security|vuln|cve") { $intent = "security"; $area = "security" }
+      elseif ($titleBody -match "ci|build|workflow") { $intent = "autofix"; $area = "ci" }
+      gh issue edit $issue.html_url --add-label $intent --add-label queued --add-label $risk --add-label $area
+      $existingLabels += @($intent, "queued", $risk, $area)
+    }
     gh issue edit $issue.html_url --remove-label queued --add-label in-progress
     if ($existingLabels -notcontains $attemptLabel) {
       gh issue edit $issue.html_url --add-label $attemptLabel
@@ -85,10 +107,14 @@ foreach ($issue in $issues) {
     git checkout -b $branch
 
     $latestHuman = $null
+    $commentHistory = @()
     try {
       $comments = Invoke-GhJson -Args @("api", "repos/$repo/issues/$($issue.number)/comments", "-f", "per_page=100", "-f", "sort=created", "-f", "direction=desc")
       if ($comments) {
         $latestHuman = $comments | Where-Object { $_.user.type -eq "User" -and $_.user.login -ne "github-actions[bot]" } | Select-Object -First 1
+        $commentHistory = $comments | Sort-Object created_at | ForEach-Object {
+          "[${$_.user.login}] ${$_.body}"
+        }
       }
     } catch {
       Write-Log "Failed to load comments for $repo#$($issue.number): $_" "WARN"
@@ -113,6 +139,10 @@ foreach ($issue in $issues) {
         ) -join [Environment]::NewLine
         gh issue comment $issue.html_url -b $guidanceNote
       }
+    }
+    if ($commentHistory.Count -gt 0) {
+      $prompt += "Full comment history (oldest to newest):"
+      $prompt += ($commentHistory -join [Environment]::NewLine)
     }
     $prompt += "Rules: minimal patch, no unrelated edits, no secrets, run best-effort tests."
     $prompt += "Return a concise plan and apply fixes."
@@ -153,14 +183,15 @@ foreach ($issue in $issues) {
 
     $verification = "skipped"
     $confidence = "low"
+    $issueLog = Join-Path $env:TEMP ("autopilot\\logs\\issue_" + $repo.Replace("/", "_") + "_" + $issue.number + ".log")
     if (Test-Path "package.json") {
       $verification = "npm"
       $confidence = "medium"
       if (-not $dryRun) {
         $commandsRun.Add("npm ci")
-        Invoke-Checked -Command "npm" -Args @("ci")
+        Invoke-CheckedLogged -Command "npm" -Args @("ci") -LogPath $issueLog
         $commandsRun.Add("npm test")
-        Invoke-Checked -Command "npm" -Args @("test")
+        Invoke-CheckedLogged -Command "npm" -Args @("test") -LogPath $issueLog
         $confidence = "high"
       }
     } elseif (Test-Path "pyproject.toml" -or Test-Path "requirements.txt") {
@@ -168,14 +199,14 @@ foreach ($issue in $issues) {
       $confidence = "medium"
       if (-not $dryRun) {
         $commandsRun.Add("python -m venv .autopilot-venv")
-        Invoke-Checked -Command "python" -Args @("-m", "venv", ".autopilot-venv")
+        Invoke-CheckedLogged -Command "python" -Args @("-m", "venv", ".autopilot-venv") -LogPath $issueLog
         .\.autopilot-venv\Scripts\Activate.ps1
         if (Test-Path "requirements.txt") {
           $commandsRun.Add("python -m pip install -r requirements.txt")
-          Invoke-Checked -Command "python" -Args @("-m", "pip", "install", "-r", "requirements.txt")
+          Invoke-CheckedLogged -Command "python" -Args @("-m", "pip", "install", "-r", "requirements.txt") -LogPath $issueLog
         }
         $commandsRun.Add("pytest -q")
-        Invoke-Checked -Command "pytest" -Args @("-q")
+        Invoke-CheckedLogged -Command "pytest" -Args @("-q") -LogPath $issueLog
         $confidence = "high"
       }
     } elseif ((Get-ChildItem -Filter "*.sln" -ErrorAction SilentlyContinue)) {
@@ -183,7 +214,7 @@ foreach ($issue in $issues) {
       $confidence = "medium"
       if (-not $dryRun) {
         $commandsRun.Add("dotnet test")
-        Invoke-Checked -Command "dotnet" -Args @("test")
+        Invoke-CheckedLogged -Command "dotnet" -Args @("test") -LogPath $issueLog
         $confidence = "high"
       }
     }
@@ -209,6 +240,10 @@ foreach ($issue in $issues) {
         "Files changed: $([string]::Join(', ', $filesChanged))",
         "Commands: $([string]::Join(', ', $commandsRun))"
       ) -join [Environment]::NewLine
+      $tail = Get-LogTail -LogPath $issueLog -Lines 40
+      if ($tail) {
+        $audit += [Environment]::NewLine + "Log tail:" + [Environment]::NewLine + ($tail -join [Environment]::NewLine)
+      }
       gh issue comment $issue.html_url -b $audit
     }
 
@@ -224,6 +259,10 @@ foreach ($issue in $issues) {
         "Result: failure",
         "Commands: $([string]::Join(', ', $commandsRun))"
       ) -join [Environment]::NewLine
+      $tail = Get-LogTail -LogPath $issueLog -Lines 40
+      if ($tail) {
+        $audit += [Environment]::NewLine + "Log tail:" + [Environment]::NewLine + ($tail -join [Environment]::NewLine)
+      }
       gh issue comment $issue.html_url -b $audit
     }
   } finally {
