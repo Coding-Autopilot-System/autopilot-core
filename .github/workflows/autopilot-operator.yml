@@ -17,6 +17,7 @@ jobs:
       ORG: ${{ vars.ORG }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Ensure Codex on PATH
         shell: pwsh
@@ -40,6 +41,14 @@ jobs:
             codex --version
           } else {
             Write-Host "Codex not found on PATH"
+            exit 1
+          }
+
+      - name: Validate Codex auth
+        shell: pwsh
+        run: |
+          if (-not $env:OPENAI_API_KEY) {
+            Write-Host "OPENAI_API_KEY is not set."
             exit 1
           }
 
