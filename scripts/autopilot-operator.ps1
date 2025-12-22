@@ -138,6 +138,7 @@ foreach ($issue in $issues) {
       if (-not $dryRun) {
         gh issue comment $issue.html_url -b "No changes produced by automation. Marking blocked."
         gh issue edit $issue.html_url --remove-label in-progress --add-label blocked
+        gh issue edit $issue.html_url --add-label low
         $audit = @(
           "Autopilot attempt: $attemptLabel",
           "Result: no changes",
@@ -151,16 +152,20 @@ foreach ($issue in $issues) {
     $filesChanged = (git diff --name-only) -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 
     $verification = "skipped"
+    $confidence = "low"
     if (Test-Path "package.json") {
       $verification = "npm"
+      $confidence = "medium"
       if (-not $dryRun) {
         $commandsRun.Add("npm ci")
         Invoke-Checked -Command "npm" -Args @("ci")
         $commandsRun.Add("npm test")
         Invoke-Checked -Command "npm" -Args @("test")
+        $confidence = "high"
       }
     } elseif (Test-Path "pyproject.toml" -or Test-Path "requirements.txt") {
       $verification = "python"
+      $confidence = "medium"
       if (-not $dryRun) {
         $commandsRun.Add("python -m venv .autopilot-venv")
         Invoke-Checked -Command "python" -Args @("-m", "venv", ".autopilot-venv")
@@ -171,12 +176,15 @@ foreach ($issue in $issues) {
         }
         $commandsRun.Add("pytest -q")
         Invoke-Checked -Command "pytest" -Args @("-q")
+        $confidence = "high"
       }
     } elseif ((Get-ChildItem -Filter "*.sln" -ErrorAction SilentlyContinue)) {
       $verification = "dotnet"
+      $confidence = "medium"
       if (-not $dryRun) {
         $commandsRun.Add("dotnet test")
         Invoke-Checked -Command "dotnet" -Args @("test")
+        $confidence = "high"
       }
     }
 
@@ -191,11 +199,13 @@ foreach ($issue in $issues) {
 
       gh issue comment $issue.html_url -b "Opened PR: $pr"
       gh issue edit $issue.html_url --remove-label in-progress --add-label done
+      gh issue edit $issue.html_url --add-label $confidence
 
       $audit = @(
         "Autopilot attempt: $attemptLabel",
         "Result: success",
         "Verification: $verification",
+        "Confidence: $confidence",
         "Files changed: $([string]::Join(', ', $filesChanged))",
         "Commands: $([string]::Join(', ', $commandsRun))"
       ) -join [Environment]::NewLine
@@ -208,6 +218,7 @@ foreach ($issue in $issues) {
     if (-not $dryRun) {
       gh issue comment $issue.html_url -b "Automation failed: $_"
       gh issue edit $issue.html_url --remove-label in-progress --add-label blocked
+      gh issue edit $issue.html_url --add-label low
       $audit = @(
         "Autopilot attempt: $attemptLabel",
         "Result: failure",

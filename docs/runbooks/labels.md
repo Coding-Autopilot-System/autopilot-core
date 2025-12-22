@@ -23,6 +23,11 @@
 - `infra`
 - `security`
 
+## Confidence labels
+- `high`
+- `medium`
+- `low`
+
 ## Allowed transitions
 - `queued` -> `in-progress` -> `done`
 - `queued` -> `blocked`
