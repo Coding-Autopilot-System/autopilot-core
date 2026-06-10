@@ -3,9 +3,15 @@
 [![CI](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**Org-level AI autopilot operator** — scans GitHub issues labeled `autofix + queued`, invokes Codex to generate fixes, and opens pull requests automatically across the Coding-Autopilot-System organization.
+**Org-level AI autopilot control plane** - scans GitHub issues labeled `autofix + queued`, invokes Codex to generate fixes, and opens pull requests automatically across the Coding-Autopilot-System organization.
 
 Part of the [Coding-Autopilot-System](https://github.com/Coding-Autopilot-System) autonomous CI repair platform alongside [ci-autopilot](https://github.com/Coding-Autopilot-System/ci-autopilot) and [autopilot-demo](https://github.com/Coding-Autopilot-System/autopilot-demo).
+
+## Repo boundary
+
+- `autopilot-core` is the control plane: org-wide intake governance, operator scheduling, PR creation, and rollout visibility.
+- `ci-autopilot` is the worker/runtime pattern: the runner-hosted Python agent and workflow assets used to execute repairs.
+- `autopilot-demo` is the proof repo: a safe target that demonstrates the full failure-to-fix loop.
 
 ## How it works
 
@@ -28,30 +34,39 @@ flowchart LR
 ## Quick start
 
 1. Set org variable `ORG` in GitHub Actions for this repo.
-2. Install `autopilot-create-issue.yml` into target repos (or use `autopilot-org-installer.yml`).
+2. Install `autopilot-create-issue.yml` into target repos, or use `autopilot-org-installer.yml`.
 3. Ensure a self-hosted Windows runner with Codex and `OPENAI_API_KEY` is online.
 4. Trigger `autopilot-operator.yml` manually to validate the setup.
+
+## Enterprise proof points
+
+- Centralized control plane with explicit issue-queue handoff instead of opaque direct mutation.
+- Auditable lifecycle: CI failure, intake issue, operator run, fix branch, and PR are all visible in GitHub.
+- Guardrailed execution: label-gated intake, skip labels for risky work, and verification before PR creation.
+- Org-scale rollout path: installer workflow distributes intake automation to opted-in repositories.
 
 ## Safety guardrails
 
 - Acts only on issues labeled `autofix + queued`.
 - Skips issues labeled `risky` or `needs-design`.
-- Minimal diffs only — no secrets, no destructive operations.
+- Minimal diffs only - no secrets, no destructive operations.
 - Best-effort verification before PR creation.
 
 ## Workflows
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `ci.yml` | push/PR to main | Portfolio CI — YAML validation (ubuntu-latest) |
-| `autopilot-operator.yml` | schedule + dispatch | Core operator — scan issues, run Codex, open PRs |
+| `ci.yml` | push/PR to main | Portfolio CI - YAML validation (ubuntu-latest) |
+| `autopilot-operator.yml` | schedule + dispatch | Core operator - scan issues, run Codex, open PRs |
 | `autopilot-org-installer.yml` | hourly + dispatch | Install intake workflow into opted-in repos |
 | `autopilot-create-issue.yml` | workflow_run failure | Create intake issue when monitored workflow fails |
 | `autopilot-docs-daily.yml` | daily | Update dashboard status page |
 
 ## Documentation
 
-- [Wiki](https://github.com/Coding-Autopilot-System/autopilot-core/wiki) — setup guide, architecture, configuration reference
-- [Dashboard](https://coding-autopilot-system.github.io/autopilot-core/) — live autopilot status
-- `docs/status.md` — status snapshot
-- `docs/runbooks/` — operational runbooks
+- [Wiki](https://github.com/Coding-Autopilot-System/autopilot-core/wiki) - setup guide, architecture, configuration reference
+- [Dashboard](https://coding-autopilot-system.github.io/autopilot-core/) - live autopilot status
+- [docs/status.md](docs/status.md) - status snapshot
+- [docs/runbooks/operator.md](docs/runbooks/operator.md) - operator runbook
+- [docs/runbooks/install-to-repo.md](docs/runbooks/install-to-repo.md) - repo onboarding runbook
+- [docs/demos/demo-repo.md](docs/demos/demo-repo.md) - demo walkthrough using `autopilot-demo`
