@@ -64,7 +64,7 @@ jobs:
               if [ -n "${existing}" ]; then
                 gh issue comment -R ${ORG}/${repo} "${existing}" -b "${body}"
               else
-                gh issue create -R ${ORG}/${repo} -t "Autopilot intake not installed" -b "${body}" -l "autofix,queued,docs"
+                gh issue create -R ${ORG}/${repo} -t "Autopilot opt-in available" -b "${body}"
               fi
               continue
             fi

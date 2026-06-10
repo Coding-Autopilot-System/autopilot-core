@@ -12,6 +12,7 @@ function Assert-NotContains {
 
 $operator = Get-Content -Raw "scripts/autopilot-operator.ps1"
 $workflow = Get-Content -Raw ".github/workflows/autopilot-operator.yml"
+$installer = Get-Content -Raw ".github/workflows/autopilot-org-installer.yml"
 
 Assert-Contains $operator 'label:autofix label:queued' "Operator must require autofix and queued labels."
 Assert-NotContains $operator 'no:label' "Operator must not execute unlabeled issues."
@@ -21,5 +22,7 @@ Assert-Contains $operator 'Assert-SafeChangeSet' "Operator must validate generat
 Assert-Contains $operator 'ALLOW_UNVERIFIED' "Operator must enforce verification by default."
 Assert-Contains $workflow 'secrets\.ORG_AUTOPILOT_TOKEN' "Workflow must use an explicit org mutation token."
 Assert-NotContains $workflow 'GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}' "Workflow must not use repository token for org mutations."
+
+Assert-NotContains $installer 'autofix,queued,docs' "Installer must not queue automation before repository opt-in."
 
 Write-Host "Control-plane contract tests passed."
