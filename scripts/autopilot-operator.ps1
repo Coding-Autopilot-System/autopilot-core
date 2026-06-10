@@ -48,7 +48,7 @@ query($q:String!, $first:Int!) {
 }
 
 $issues = @()
-$query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design"
+$query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design -label:try-3"
 $issues += Search-Issues -SearchQuery $query -First $maxIssues
 
 if (-not $issues -or $issues.Count -eq 0) {
@@ -78,8 +78,12 @@ foreach ($issue in $issues) {
   if ($issue.labels) {
     $existingLabels = $issue.labels.nodes | ForEach-Object { $_.name }
   }
-  $attempt = 1
-  if ($existingLabels -contains "try-2") { $attempt = 3 }
+  if ($existingLabels -contains "try-3") {
+    Write-Log "Skipping $repo#$($issue.number) (attempt limit reached)" "WARN"
+    continue
+  }
+
+  $attempt = 1  if ($existingLabels -contains "try-2") { $attempt = 3 }
   elseif ($existingLabels -contains "try-1") { $attempt = 2 }
   $attemptLabel = $attemptLabels[$attempt - 1]
 
