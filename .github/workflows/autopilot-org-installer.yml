@@ -60,20 +60,7 @@ jobs:
             if [ "${opt_in}" != "true" ]; then
               marker="Autopilot Installer"
               existing=$(gh issue list -R ${ORG}/${repo} -s open -S "\"${marker}\"" --json number --jq '.[0].number')
-              body=$(cat <<EOF
-              ${marker}
-
-              This repo does not have the Autopilot intake workflow installed.
-              To opt in, add a file at:
-
-              .autopilot/opt-in
-
-              Optional: specify monitored workflows in:
-              .autopilot/workflows.txt
-
-              Once opt-in is present, Autopilot will open a PR to install the workflow.
-              EOF
-              )
+              body=$(printf '%s\n' "${marker}" "" "This repo does not have the Autopilot intake workflow installed." "To opt in, add a file at:" "" ".autopilot/opt-in" "" "Optional: specify monitored workflows in:" ".autopilot/workflows.txt" "" "Once opt-in is present, Autopilot will open a PR to install the workflow.")
               if [ -n "${existing}" ]; then
                 gh issue comment -R ${ORG}/${repo} "${existing}" -b "${body}"
               else

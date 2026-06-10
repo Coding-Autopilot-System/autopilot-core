@@ -41,28 +41,7 @@ jobs:
             table="${table}\n| ${ORG}/${repo} | ${queued} | ${inprogress} | ${blocked} | ${done} |"
           done
 
-          cat > docs/status.md <<EOF
-# Autopilot Status
-
-Last updated: ${ts}
-
-## Repository coverage
-
-${table}
-EOF
-
-          python - <<'PY'
-import re
-from pathlib import Path
-
-ts = """Last updated: ${ts}
-See `docs/status.md` for the full status table."""
-path = Path("README.md")
-text = path.read_text()
-block = "<!-- AUTOPILOT-STATUS:START -->\n" + ts + "\n<!-- AUTOPILOT-STATUS:END -->"
-text = re.sub(r"<!-- AUTOPILOT-STATUS:START -->(.|\n)*?<!-- AUTOPILOT-STATUS:END -->", block, text)
-path.write_text(text)
-PY
+          printf '# Autopilot Status\n\nLast updated: %s\n\n## Repository coverage\n\n%b\n' "${ts}" "${table}" > docs/status.md
 
       - name: Create PR
         run: |
@@ -73,7 +52,7 @@ PY
           fi
           branch="docs/daily-status"
           git checkout -B "${branch}"
-          git add docs/status.md README.md
+          git add docs/status.md
           git commit -m "Update autopilot status"
           git push -f origin "${branch}"
           gh pr create -t "Daily autopilot status update" -b "Automated docs update." --base main --head "${branch}" || true
