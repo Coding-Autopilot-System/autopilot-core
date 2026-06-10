@@ -22,6 +22,39 @@ Test-Tool -Name "codex"
 Write-Log "Autopilot operator starting for org: $org"
 Write-Log "Max issues: $maxIssues Dry run: $dryRun"
 
+function Get-ChangedFiles {
+  $paths = @()
+  foreach ($line in @(git status --porcelain)) {
+    if (-not $line -or $line.Length -lt 4) { continue }
+    $path = $line.Substring(3).Trim()
+    if ($path -match " -> ") { $path = ($path -split " -> ")[-1] }
+    $paths += $path.Trim('"')
+  }
+  return @($paths | Sort-Object -Unique)
+}
+
+function Assert-SafeChangeSet {
+  param([string[]]$Paths, [int]$MaxFiles, [int]$MaxLines)
+
+  if (-not $Paths -or $Paths.Count -eq 0) { throw "No changed files found." }
+  if ($Paths.Count -gt $MaxFiles) { throw "Change set has $($Paths.Count) files; limit is $MaxFiles." }
+
+  $sensitive = '(^|/)(\.env($|\.)|credentials($|\.)|secrets?($|\.)|id_[^/]+|[^/]+\.(pem|key|pfx|p12))$'
+  foreach ($path in $Paths) {
+    $normalized = $path.Replace('\', '/')
+    if ($normalized -match $sensitive) { throw "Sensitive path blocked: $path" }
+  }
+
+  $changedLines = 0
+  foreach ($line in @(git diff --numstat -- .)) {
+    $parts = $line -split "\s+"
+    if ($parts.Count -ge 2 -and $parts[0] -match '^\d+$' -and $parts[1] -match '^\d+$') {
+      $changedLines += [int]$parts[0] + [int]$parts[1]
+    }
+  }
+  if ($changedLines -gt $MaxLines) { throw "Change set has $changedLines changed lines; limit is $MaxLines." }
+}
+
 function Search-Issues {
   param([string]$SearchQuery, [int]$First)
   $gql = @'
@@ -200,7 +233,10 @@ foreach ($issue in $issues) {
       continue
     }
 
-    $filesChanged = (git diff --name-only) -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    $filesChanged = @(Get-ChangedFiles)
+    $maxChangedFiles = [int]($env:MAX_CHANGED_FILES ?? 20)
+    $maxChangedLines = [int]($env:MAX_CHANGED_LINES ?? 1000)
+    Assert-SafeChangeSet -Paths $filesChanged -MaxFiles $maxChangedFiles -MaxLines $maxChangedLines
 
     $verification = "skipped"
     $confidence = "low"
