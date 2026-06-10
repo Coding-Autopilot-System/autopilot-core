@@ -12,7 +12,7 @@ Status: passed with manual deployment prerequisites
 | F-04 | fixed | `36daf3c`, `e34d380` enforce sensitive-path and change-size policies. |
 | F-05 | fixed | `7bbcf3c`, `bc1e0e8` require supported verification by default and document exceptions. |
 | F-06 | fixed | `f15b9f8`, `bc1e0e8` require and document the org mutation token contract. |
-| F-07 | fixed | `26cf4f4` repairs workflow YAML and adds failing validation plus contract tests. |
+| F-07 | fixed | `26cf4f4`, `f2e6e43` repair workflow YAML, add contract tests, and migrate actions to Node.js 24-compatible majors. |
 | F-08 | fixed | `c7b10fc` makes pre-opt-in installer notices non-actionable. |
 
 ## Validation
@@ -22,6 +22,7 @@ Status: passed with manual deployment prerequisites
 - `python -m compileall tests`: passed.
 - `yamllint` with GitHub Actions-compatible truthy rule disabled: passed.
 - `git diff --check`: passed.
+- Remote CI run `27290403822`: passed without Node.js runtime deprecation annotations.
 
 ## Manual-only findings
 
