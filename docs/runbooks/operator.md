@@ -21,6 +21,9 @@ $env:DRY_RUN = "true"
 - `MAX_CHANGED_LINES` (default 1000)
 - `ALLOW_UNVERIFIED` (default false; approved exceptions only)
 
+
+## GitHub authorization
+The scheduled workflow requires an `ORG_AUTOPILOT_TOKEN` secret backed by a short-lived GitHub App installation token or fine-grained token. Grant access only to opted-in repositories with Issues and Pull requests write plus Contents write. The repository-scoped `GITHUB_TOKEN` cannot perform cross-repository control-plane mutations.
 ## Behavior
 - Only processes issues labeled `autofix` + `queued`
 - Skips `risky` and `needs-design`
