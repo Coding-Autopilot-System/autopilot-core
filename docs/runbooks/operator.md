@@ -17,11 +17,14 @@ $env:DRY_RUN = "true"
 - `MAX_ISSUES` (default 5)
 - `DRY_RUN` (default false)
 - `BASE_BRANCH_OVERRIDE` (optional)
+- `MAX_CHANGED_FILES` (default 20)
+- `MAX_CHANGED_LINES` (default 1000)
+- `ALLOW_UNVERIFIED` (default false; approved exceptions only)
 
 ## Behavior
 - Only processes issues labeled `autofix` + `queued`
 - Skips `risky` and `needs-design`
-- Attempts best-effort verification
+- Requires a supported verification command unless an approved exception sets `ALLOW_UNVERIFIED=true`
 - Opens a PR if changes are safe and tests pass
 
 ## Logging

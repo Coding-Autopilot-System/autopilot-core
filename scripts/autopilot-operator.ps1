@@ -10,6 +10,7 @@ $org = $env:ORG
 
 $maxIssues = [int]($env:MAX_ISSUES ?? 5)
 $dryRun = ($env:DRY_RUN ?? "false") -eq "true"
+$allowUnverified = ($env:ALLOW_UNVERIFIED ?? "false") -eq "true"
 $allowlist = @()
 if ($env:REPO_ALLOWLIST) {
   $allowlist = $env:REPO_ALLOWLIST.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
@@ -274,6 +275,10 @@ foreach ($issue in $issues) {
         Invoke-CheckedLogged -Command "dotnet" -Args @("test") -LogPath $issueLog
         $confidence = "high"
       }
+    }
+
+    if ($verification -eq "skipped" -and -not $allowUnverified) {
+      throw "No supported verification command detected. Set ALLOW_UNVERIFIED=true only for an approved exception."
     }
 
     if (-not $dryRun) {
