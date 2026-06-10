@@ -34,9 +34,10 @@ flowchart LR
 ## Quick start
 
 1. Set org variable `ORG` in GitHub Actions for this repo.
-2. Install `autopilot-create-issue.yml` into target repos, or use `autopilot-org-installer.yml`.
-3. Ensure a self-hosted Windows runner with Codex and `OPENAI_API_KEY` is online.
-4. Trigger `autopilot-operator.yml` manually to validate the setup.
+2. Configure the least-privilege `ORG_AUTOPILOT_TOKEN` secret for opted-in repository mutations.
+3. Install `autopilot-create-issue.yml` into target repos, or use `autopilot-org-installer.yml`.
+4. Ensure a self-hosted Windows runner with Codex and `OPENAI_API_KEY` is online.
+5. Trigger `autopilot-operator.yml` manually to validate the setup.
 
 ## Enterprise proof points
 
@@ -50,7 +51,7 @@ flowchart LR
 - Acts only on issues labeled `autofix + queued`.
 - Skips issues labeled `risky` or `needs-design`.
 - Minimal diffs only - no secrets, no destructive operations.
-- Best-effort verification before PR creation.
+- Required supported verification before PR creation, with explicit approved exceptions only.
 
 ## Workflows
 
