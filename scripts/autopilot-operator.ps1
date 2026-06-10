@@ -40,7 +40,7 @@ function Assert-SafeChangeSet {
   if (-not $Paths -or $Paths.Count -eq 0) { throw "No changed files found." }
   if ($Paths.Count -gt $MaxFiles) { throw "Change set has $($Paths.Count) files; limit is $MaxFiles." }
 
-  $sensitive = '(^|/)(\.env($|\.)|credentials($|\.)|secrets?($|\.)|id_[^/]+|[^/]+\.(pem|key|pfx|p12))$'
+  $sensitive = '(^|/)(\.env($|\.)|credentials?($|\.)|secrets?($|\.)|id_[^/]+$|[^/]+\.(pem|key|pfx|p12)$)'
   foreach ($path in $Paths) {
     $normalized = $path.Replace('\', '/')
     if ($normalized -match $sensitive) { throw "Sensitive path blocked: $path" }
