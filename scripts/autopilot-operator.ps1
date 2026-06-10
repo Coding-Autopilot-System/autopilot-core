@@ -51,9 +51,6 @@ $issues = @()
 $query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design"
 $issues += Search-Issues -SearchQuery $query -First $maxIssues
 
-$manualQuery = "org:$org is:issue is:open no:label"
-$issues += Search-Issues -SearchQuery $manualQuery -First $maxIssues
-
 if (-not $issues -or $issues.Count -eq 0) {
   Write-Log "No issues found."
   exit 0
@@ -87,18 +84,6 @@ foreach ($issue in $issues) {
   $attemptLabel = $attemptLabels[$attempt - 1]
 
   if (-not $dryRun) {
-    if ($existingLabels.Count -eq 0) {
-      $intent = "improve"
-      $area = "ci"
-      $risk = "safe-small"
-      $titleBody = ($issue.title + " " + $issue.body).ToLowerInvariant()
-      if ($titleBody -match "doc") { $intent = "docs"; $area = "docs" }
-      elseif ($titleBody -match "test") { $intent = "tests"; $area = "tests" }
-      elseif ($titleBody -match "security|vuln|cve") { $intent = "security"; $area = "security" }
-      elseif ($titleBody -match "ci|build|workflow") { $intent = "autofix"; $area = "ci" }
-      gh issue edit $issue.url --add-label $intent --add-label queued --add-label $risk --add-label $area
-      $existingLabels += @($intent, "queued", $risk, $area)
-    }
     gh issue edit $issue.url --remove-label queued --add-label in-progress
     if ($existingLabels -notcontains $attemptLabel) {
       gh issue edit $issue.url --add-label $attemptLabel
