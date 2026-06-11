@@ -6,27 +6,22 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Install workflow validator dependency
+        run: python -m pip install --disable-pip-version-check PyYAML==6.0.2
 
       - name: Validate workflow YAML
-        run: |
-          python -c "
-          import yaml, glob, sys
-          files = glob.glob('.github/workflows/*.yml')
-          errors = []
-          for f in files:
-              try:
-                  with open(f) as fh:
-                      yaml.safe_load(fh)
-                  print('  OK:', f)
-              except yaml.YAMLError as e:
-                  # GitHub Actions parses some heredoc patterns that Python
-                  # yaml.safe_load rejects (heredoc terminators at column 0
-                  # inside block scalars). Warn but do not fail.
-                  print('  WARN:', f, '-', str(e).split('\n')[0])
-          print('Validated', len(files), 'workflow files')
-          "
+        run: python tests/validate_workflows.py
+
+      - name: Validate control-plane contracts
+        shell: pwsh
+        run: ./tests/contract-tests.ps1

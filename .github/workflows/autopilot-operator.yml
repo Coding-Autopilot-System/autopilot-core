@@ -15,8 +15,7 @@ jobs:
     runs-on: [self-hosted, Windows]
     env:
       ORG: ${{ vars.ORG }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.ORG_AUTOPILOT_TOKEN }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Ensure Codex on PATH
@@ -28,7 +27,7 @@ jobs:
           }
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           clean: false
 
@@ -41,6 +40,14 @@ jobs:
             codex --version
           } else {
             Write-Host "Codex not found on PATH"
+            exit 1
+          }
+
+      - name: Validate org mutation token
+        shell: pwsh
+        run: |
+          if (-not $env:GH_TOKEN) {
+            Write-Host "ORG_AUTOPILOT_TOKEN is not set."
             exit 1
           }
 
