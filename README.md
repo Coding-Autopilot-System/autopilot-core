@@ -56,11 +56,25 @@ flowchart LR
 - Minimal diffs only - no secrets, no destructive operations.
 - Required supported verification before PR creation, with explicit approved exceptions only.
 
+## Testing
+
+Run the full suite (workflow YAML validation, control-plane contract tests, and
+Pester unit tests) with a single command:
+
+```powershell
+pwsh ./tests/run-tests.ps1
+```
+
+Unit tests (Pester 5) cover the safety- and payload-critical logic:
+`Assert-SafeChangeSet` (sensitive-path and diff-budget guards), `Get-ChangedFile`
+(porcelain parsing), `Search-Issue` (GraphQL request construction), and the
+`Autopilot.Common` helpers (`Get-RepoName`, `Invoke-GhJson`, `Get-LogTail`).
+
 ## Workflows
 
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
-| `ci.yml` | push/PR to main | Portfolio CI - YAML validation (ubuntu-latest) |
+| `ci.yml` | push/PR to main | Portfolio CI - YAML validation + Pester unit tests (ubuntu-latest) |
 | `autopilot-operator.yml` | schedule + dispatch | Core operator - scan issues, run Codex, open PRs |
 | `autopilot-org-installer.yml` | hourly + dispatch | Install intake workflow into opted-in repos |
 | `autopilot-create-issue.yml` | workflow_run failure | Create intake issue when monitored workflow fails |

@@ -1,11 +1,11 @@
 $ErrorActionPreference = "Stop"
 
-function Assert-Contains {
+function Assert-TextMatch {
   param([string]$Text, [string]$Pattern, [string]$Message)
   if ($Text -notmatch $Pattern) { throw $Message }
 }
 
-function Assert-NotContains {
+function Assert-TextNotMatch {
   param([string]$Text, [string]$Pattern, [string]$Message)
   if ($Text -match $Pattern) { throw $Message }
 }
@@ -15,17 +15,17 @@ $workflow = Get-Content -Raw ".github/workflows/autopilot-operator.yml"
 $installer = Get-Content -Raw ".github/workflows/autopilot-org-installer.yml"
 $allWorkflows = (Get-ChildItem -Recurse -File -Include *.yml,*.yaml | ForEach-Object { Get-Content -Raw $_.FullName }) -join "`n"
 
-Assert-Contains $operator 'label:autofix label:queued' "Operator must require autofix and queued labels."
-Assert-NotContains $operator 'no:label' "Operator must not execute unlabeled issues."
-Assert-Contains $operator '-label:try-3' "Operator must exclude exhausted issues."
-Assert-Contains $operator 'BEGIN UNTRUSTED ISSUE CONTENT' "Operator must delimit untrusted prompt content."
-Assert-Contains $operator 'Assert-SafeChangeSet' "Operator must validate generated changes."
-Assert-Contains $operator 'ALLOW_UNVERIFIED' "Operator must enforce verification by default."
-Assert-Contains $workflow 'secrets\.ORG_AUTOPILOT_TOKEN' "Workflow must use an explicit org mutation token."
-Assert-NotContains $workflow 'GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}' "Workflow must not use repository token for org mutations."
+Assert-TextMatch -Text $operator -Pattern 'label:autofix label:queued' -Message "Operator must require autofix and queued labels."
+Assert-TextNotMatch -Text $operator -Pattern 'no:label' -Message "Operator must not execute unlabeled issues."
+Assert-TextMatch -Text $operator -Pattern '-label:try-3' -Message "Operator must exclude exhausted issues."
+Assert-TextMatch -Text $operator -Pattern 'BEGIN UNTRUSTED ISSUE CONTENT' -Message "Operator must delimit untrusted prompt content."
+Assert-TextMatch -Text $operator -Pattern 'Assert-SafeChangeSet' -Message "Operator must validate generated changes."
+Assert-TextMatch -Text $operator -Pattern 'ALLOW_UNVERIFIED' -Message "Operator must enforce verification by default."
+Assert-TextMatch -Text $workflow -Pattern 'secrets\.ORG_AUTOPILOT_TOKEN' -Message "Workflow must use an explicit org mutation token."
+Assert-TextNotMatch -Text $workflow -Pattern 'GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}' -Message "Workflow must not use repository token for org mutations."
 
-Assert-NotContains $installer 'autofix,queued,docs' "Installer must not queue automation before repository opt-in."
+Assert-TextNotMatch -Text $installer -Pattern 'autofix,queued,docs' -Message "Installer must not queue automation before repository opt-in."
 
-Assert-NotContains $allWorkflows 'actions/checkout@v4|actions/github-script@v7' "Workflows must not use deprecated Node.js 20 action majors."
+Assert-TextNotMatch -Text $allWorkflows -Pattern 'actions/checkout@v4|actions/github-script@v7' -Message "Workflows must not use deprecated Node.js 20 action majors."
 
-Write-Host "Control-plane contract tests passed."
+Write-Output "Control-plane contract tests passed."
