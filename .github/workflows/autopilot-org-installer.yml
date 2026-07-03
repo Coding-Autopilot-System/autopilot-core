@@ -13,6 +13,7 @@ permissions:
 jobs:
   installer:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       ORG: ${{ vars.ORG }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

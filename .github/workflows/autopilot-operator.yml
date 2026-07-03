@@ -13,6 +13,7 @@ permissions:
 jobs:
   operator:
     runs-on: [self-hosted, Windows]
+    timeout-minutes: 15
     env:
       ORG: ${{ vars.ORG }}
       GH_TOKEN: ${{ secrets.ORG_AUTOPILOT_TOKEN }}
