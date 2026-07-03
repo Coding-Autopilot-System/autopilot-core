@@ -8,9 +8,9 @@ Initialize-Log
 Assert-Env -Name "ORG"
 $org = $env:ORG
 
-$maxIssues = [int]($env:MAX_ISSUES ?? 5)
-$dryRun = ($env:DRY_RUN ?? "false") -eq "true"
-$allowUnverified = ($env:ALLOW_UNVERIFIED ?? "false") -eq "true"
+$maxIssues = if ($env:MAX_ISSUES) { [int]$env:MAX_ISSUES } else { 5 }
+$dryRun = if ($env:DRY_RUN) { $env:DRY_RUN -eq "true" } else { $false }
+$allowUnverified = if ($env:ALLOW_UNVERIFIED) { $env:ALLOW_UNVERIFIED -eq "true" } else { $false }
 $allowlist = @()
 if ($env:REPO_ALLOWLIST) {
   $allowlist = $env:REPO_ALLOWLIST.Split(",") | ForEach-Object { $_.Trim() } | Where-Object { $_ }
@@ -23,7 +23,7 @@ Test-Tool -Name "codex"
 Write-Log "Autopilot operator starting for org: $org"
 Write-Log "Max issues: $maxIssues Dry run: $dryRun"
 
-function Get-ChangedFiles {
+function Get-ChangedFile {
   $paths = @()
   foreach ($line in @(git status --porcelain)) {
     if (-not $line -or $line.Length -lt 4) { continue }
@@ -56,7 +56,7 @@ function Assert-SafeChangeSet {
   if ($changedLines -gt $MaxLines) { throw "Change set has $changedLines changed lines; limit is $MaxLines." }
 }
 
-function Search-Issues {
+function Search-Issue {
   param([string]$SearchQuery, [int]$First)
   $gql = @'
 query($q:String!, $first:Int!) {
@@ -83,7 +83,7 @@ query($q:String!, $first:Int!) {
 
 $issues = @()
 $query = "org:$org is:issue label:autofix label:queued -label:blocked -label:risky -label:needs-design -label:try-3"
-$issues += Search-Issues -SearchQuery $query -First $maxIssues
+$issues += Search-Issue -SearchQuery $query -First $maxIssues
 
 if (-not $issues -or $issues.Count -eq 0) {
   Write-Log "No issues found."
@@ -117,7 +117,8 @@ foreach ($issue in $issues) {
     continue
   }
 
-  $attempt = 1  if ($existingLabels -contains "try-2") { $attempt = 3 }
+  $attempt = 1
+  if ($existingLabels -contains "try-2") { $attempt = 3 }
   elseif ($existingLabels -contains "try-1") { $attempt = 2 }
   $attemptLabel = $attemptLabels[$attempt - 1]
 
@@ -234,9 +235,9 @@ foreach ($issue in $issues) {
       continue
     }
 
-    $filesChanged = @(Get-ChangedFiles)
-    $maxChangedFiles = [int]($env:MAX_CHANGED_FILES ?? 20)
-    $maxChangedLines = [int]($env:MAX_CHANGED_LINES ?? 1000)
+    $filesChanged = @(Get-ChangedFile)
+    $maxChangedFiles = if ($env:MAX_CHANGED_FILES) { [int]$env:MAX_CHANGED_FILES } else { 20 }
+    $maxChangedLines = if ($env:MAX_CHANGED_LINES) { [int]$env:MAX_CHANGED_LINES } else { 1000 }
     Assert-SafeChangeSet -Paths $filesChanged -MaxFiles $maxChangedFiles -MaxLines $maxChangedLines
 
     $verification = "skipped"

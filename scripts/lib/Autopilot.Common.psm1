@@ -2,7 +2,7 @@ function Write-Log {
   param([string]$Message, [string]$Level = "INFO")
   $timestamp = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
   $line = "[$timestamp] [$Level] $Message"
-  Write-Host $line
+  Write-Output $line
   if ($script:LogFile) {
     Add-Content -Path $script:LogFile -Value $line
   }
@@ -24,8 +24,8 @@ function Assert-Env {
 }
 
 function Invoke-Gh {
-  param([string[]]$Args)
-  $cmd = @("gh") + $Args
+  param([string[]]$Arguments)
+  $cmd = @("gh") + $Arguments
   Write-Log "Running: $($cmd -join ' ')"
   & $cmd
   if ($LASTEXITCODE -ne 0) {
@@ -34,8 +34,8 @@ function Invoke-Gh {
 }
 
 function Invoke-GhJson {
-  param([string[]]$Args)
-  $json = gh @Args 2>$null
+  param([string[]]$Arguments)
+  $json = gh @Arguments 2>$null
   if (-not $json) { return $null }
   $trimmed = $json.Trim()
   $objIndex = $trimmed.IndexOf('{')
@@ -62,21 +62,21 @@ function Test-Tool {
 }
 
 function Invoke-Checked {
-  param([string]$Command, [string[]]$Args = @())
-  Write-Log "Running: $Command $($Args -join ' ')"
-  & $Command @Args
+  param([string]$Command, [string[]]$Arguments = @())
+  Write-Log "Running: $Command $($Arguments -join ' ')"
+  & $Command @Arguments
   if ($LASTEXITCODE -ne 0) {
     throw "Command failed: $Command (exit $LASTEXITCODE)"
   }
 }
 
 function Invoke-CheckedLogged {
-  param([string]$Command, [string[]]$Args = @(), [string]$LogPath)
-  Write-Log "Running: $Command $($Args -join ' ')"
+  param([string]$Command, [string[]]$Arguments = @(), [string]$LogPath)
+  Write-Log "Running: $Command $($Arguments -join ' ')"
   if ($LogPath) {
-    & $Command @Args 2>&1 | Tee-Object -FilePath $LogPath -Append
+    & $Command @Arguments 2>&1 | Tee-Object -FilePath $LogPath -Append
   } else {
-    & $Command @Args
+    & $Command @Arguments
   }
   if ($LASTEXITCODE -ne 0) {
     throw "Command failed: $Command (exit $LASTEXITCODE)"
