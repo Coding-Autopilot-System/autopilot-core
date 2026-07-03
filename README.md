@@ -1,5 +1,8 @@
 # autopilot-core
 
+[![CI](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/ci.yml/badge.svg)](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/ci.yml) [![CodeQL](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/codeql.yml/badge.svg)](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/codeql.yml)
+
+
 [![CI](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Coding-Autopilot-System/autopilot-core/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
