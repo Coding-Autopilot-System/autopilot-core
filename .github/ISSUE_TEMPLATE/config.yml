@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Coding-Autopilot-System/.github/security/policy
+    about: Report vulnerabilities privately according to the organization security policy.
+  - name: Support guidance
+    url: https://github.com/Coding-Autopilot-System/.github/blob/main/SUPPORT.md
+    about: Review support scope and required diagnostic information.
