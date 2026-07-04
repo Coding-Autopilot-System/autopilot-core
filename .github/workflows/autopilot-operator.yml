@@ -13,7 +13,8 @@ permissions:
 jobs:
   operator:
     runs-on: [self-hosted, Windows]
-    timeout-minutes: 15
+    # Cover the intended batch work: clone, Codex, dependency install, and tests.
+    timeout-minutes: 60
     env:
       ORG: ${{ vars.ORG }}
       GH_TOKEN: ${{ secrets.ORG_AUTOPILOT_TOKEN }}

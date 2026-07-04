@@ -23,6 +23,7 @@ Assert-TextMatch -Text $operator -Pattern 'Assert-SafeChangeSet' -Message "Opera
 Assert-TextMatch -Text $operator -Pattern 'ALLOW_UNVERIFIED' -Message "Operator must enforce verification by default."
 Assert-TextMatch -Text $workflow -Pattern 'secrets\.ORG_AUTOPILOT_TOKEN' -Message "Workflow must use an explicit org mutation token."
 Assert-TextNotMatch -Text $workflow -Pattern 'GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}' -Message "Workflow must not use repository token for org mutations."
+Assert-TextMatch -Text $workflow -Pattern 'timeout-minutes: 60' -Message "Operator workflow must allow enough time for the intended batch work."
 
 Assert-TextNotMatch -Text $installer -Pattern 'autofix,queued,docs' -Message "Installer must not queue automation before repository opt-in."
 
