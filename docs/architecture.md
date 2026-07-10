@@ -6,6 +6,8 @@ The **Autopilot Core** operates as an asynchronous, event-driven control plane f
 
 At its core, the architecture relies on a series of decoupled GitHub Actions workflows. A failure in an opted-in repository triggers an issue in `autopilot-core`, which acts as a central queue. An operator then processes this queue and proposes fixes.
 
+![Visual Diagram](assets/autopilot_core_architecture.png)
+
 ```mermaid
 sequenceDiagram
     participant Repo as Opted-in Repository
