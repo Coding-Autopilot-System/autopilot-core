@@ -102,3 +102,4 @@ jobs:
 
             cd "${GITHUB_WORKSPACE}"
             rm -rf "${tmp}"
+          done
