@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 15
     env:
       ORG: ${{ vars.ORG }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_TOKEN: ${{ secrets.ORG_AUTOPILOT_TOKEN }}
     steps:
       - name: Checkout installer
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -26,6 +26,10 @@ jobs:
           set -euo pipefail
           if [ -z "${ORG}" ]; then
             echo "ORG var is required."
+            exit 1
+          fi
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "ORG_AUTOPILOT_TOKEN is required for cross-repository mutations."
             exit 1
           fi
 
