@@ -1,4 +1,4 @@
-#requires -Modules Pester
+﻿#requires -Modules Pester
 
 # Unit tests for the pure/deterministic helper functions in
 # scripts/lib/Autopilot.Common.psm1. These functions build gh payloads,
