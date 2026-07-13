@@ -1,4 +1,4 @@
-#requires -Modules Pester
+﻿#requires -Modules Pester
 
 # Unit tests for the safety/parse logic inside scripts/autopilot-operator.ps1.
 #
